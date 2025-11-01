@@ -2,13 +2,16 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.v1.api import api_router
-from app.database.database import engine, Base
-from app.database.models import User, UserRole
+from app.database.database import engine, Base, SessionLocal
+from app.database.models import User, UserRole, UserStatus
 from app.core.auth import get_password_hash
-from sqlalchemy.orm import Session
-from app.database.database import get_db
 import logging
 from datetime import datetime
+import sys
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -31,30 +34,46 @@ app.add_middleware(
 # Include routers
 app.include_router(api_router, prefix="/api/v1")
 
-@app.on_event("startup")
-async def startup_event():
-    """Create default admin user on startup"""
+def create_default_admin():
+    """Create default admin user"""
+    db = SessionLocal()
     try:
-        db = next(get_db())
         # Check if default admin exists
         admin_user = db.query(User).filter(User.username == settings.DEFAULT_ADMIN_USERNAME).first()
         if not admin_user:
+            logger.info("Creating default admin user...")
             admin_user = User(
                 username=settings.DEFAULT_ADMIN_USERNAME,
                 email=settings.DEFAULT_ADMIN_EMAIL,
                 password_hash=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
                 full_name="System Administrator",
                 role=UserRole.SUPER_ADMIN,
-                status="active",
-                platform_access="both"
+                status=UserStatus.ACTIVE,
+                platform_access="both",
+                registration_type="admin_created",
+                initial_password=False  # ✅ Admin tidak perlu ganti password pertama
             )
             db.add(admin_user)
             db.commit()
-            logging.info("Default admin user created")
+            logger.info("✅ Default admin user created successfully")
+            logger.info(f"Username: {settings.DEFAULT_ADMIN_USERNAME}")
+            logger.info(f"Password: {settings.DEFAULT_ADMIN_PASSWORD}")
+        else:
+            # ✅ Pastikan admin tidak punya initial_password flag
+            if admin_user.initial_password:
+                admin_user.initial_password = False
+                db.commit()
+                logger.info("✅ Updated admin user: removed initial_password flag")
+            logger.info("✅ Default admin user already exists")
     except Exception as e:
-        logging.error(f"Error creating default admin: {e}")
+        logger.error(f"❌ Error creating default admin: {e}")
     finally:
         db.close()
+
+@app.on_event("startup")
+async def startup_event():
+    """Run on application startup"""
+    create_default_admin()
 
 @app.get("/")
 async def root():

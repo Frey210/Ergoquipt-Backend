@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import enum
+import uuid
 
 class TestType(str, enum.Enum):
     REACTION_TIME = "reaction_time"
@@ -35,7 +36,7 @@ class SessionConfigCreate(BaseModel):
     target_condition: Optional[str] = None
 
 class SessionResponse(BaseModel):
-    id: str
+    id: str  # UUID sebagai string
     session_code: str
     test_type: TestType
     status: SessionStatus
@@ -52,6 +53,12 @@ class SessionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @validator('id', pre=True)
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 class SessionUpdate(BaseModel):
     status: Optional[SessionStatus] = None

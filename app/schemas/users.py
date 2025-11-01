@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, validator
 from typing import Optional
 from datetime import datetime
 import enum
+import uuid
 
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"
@@ -28,7 +29,7 @@ class UserCreate(BaseModel):
     platform_access: PlatformAccess = PlatformAccess.MOBILE
 
 class UserResponse(BaseModel):
-    id: str
+    id: str  # UUID sebagai string
     username: str
     email: str
     full_name: str
@@ -42,6 +43,12 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @validator('id', pre=True)
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
+
 class UserRegisterResponse(BaseModel):
     id: str
     username: str
@@ -50,6 +57,15 @@ class UserRegisterResponse(BaseModel):
     temporary_password: str
     status: UserStatus
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+    @validator('id', pre=True)
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 class UserStatusUpdate(BaseModel):
     status: UserStatus

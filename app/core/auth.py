@@ -5,11 +5,12 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from app.database.models import User, UserRole, PlatformAccess
+from app.database.models import User, UserRole, PlatformAccess, UserStatus  # ✅ TAMBAH IMPORT UserStatus
 from app.config import settings
 from app.database.database import get_db
 import uuid
 
+# Gunakan bcrypt yang compatible
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
@@ -17,6 +18,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
+    # Pastikan password tidak lebih dari 72 bytes untuk bcrypt
+    if len(password) > 72:
+        password = password[:72]
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -38,8 +42,12 @@ def authenticate_user(db: Session, username: str, password: str, platform: str):
     if user.role == UserRole.OPERATOR and user.registration_type != "admin_created":
         return None
     
-    # Cek status user
-    if user.status != "active":
+    # ✅ PERBAIKAN: Operator dengan status "pending" bisa login untuk ganti password
+    if user.role == UserRole.OPERATOR and user.status not in [UserStatus.ACTIVE, UserStatus.PENDING]:
+        return None
+    
+    # ✅ PERBAIKAN: Admin harus status active
+    if user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN] and user.status != UserStatus.ACTIVE:
         return None
     
     # Cek platform access
@@ -74,7 +82,7 @@ async def get_current_user(
     return user
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
-    if current_user.status != "active":
+    if current_user.status != UserStatus.ACTIVE:  # ✅ Gunakan UserStatus.ACTIVE
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 

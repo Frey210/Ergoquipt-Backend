@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Optional, List
 from datetime import datetime
+import uuid
 
 class ReactionTrialCreate(BaseModel):
     stimulus_type: str
@@ -31,7 +32,7 @@ class VitalReadingCreate(BaseModel):
     reading_time: Optional[datetime] = None
 
 class TrialResponse(BaseModel):
-    id: str
+    id: str  # UUID sebagai string
     stimulus_type: str
     stimulus_category: str
     response_time: int
@@ -41,6 +42,12 @@ class TrialResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @validator('id', pre=True)
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
 class TrialStatistics(BaseModel):
     total_trials: int

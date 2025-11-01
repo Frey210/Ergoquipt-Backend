@@ -56,13 +56,13 @@ async def register_operator(
         operator_id=user.id,
         action="create",
         notes=f"Registered operator {user_data.username}",
-        ip_address="127.0.0.1"  # In production, get from request
+        ip_address="127.0.0.1"
     )
     db.add(log)
     db.commit()
     
     return UserRegisterResponse(
-        id=str(user.id),
+        id=str(user.id),  # Convert UUID to string
         username=user.username,
         email=user.email,
         full_name=user.full_name,
@@ -87,7 +87,20 @@ async def get_managed_operators(
         query = query.filter(User.status == UserStatus(status_filter))
     
     users = query.offset((page - 1) * limit).limit(limit).all()
-    return users
+    
+    # Convert to response models
+    return [UserResponse(
+        id=str(user.id),  # Convert UUID to string
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        university=user.university,
+        role=user.role,
+        status=user.status,
+        platform_access=user.platform_access,
+        initial_password=user.initial_password,
+        created_at=user.created_at
+    ) for user in users]
 
 @router.patch("/users/{user_id}/status")
 async def update_operator_status(
