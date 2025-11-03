@@ -13,25 +13,22 @@ services:
       - DEFAULT_ADMIN_USERNAME=admin
       - DEFAULT_ADMIN_PASSWORD=admin123
       - DEFAULT_ADMIN_EMAIL=admin@ergoquipt.com
-      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8000","http://0.0.0.0:8000"]
+      - PYTHONPATH=/app
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./app:/app
+    # HAPUS volume mount sementara untuk test
+    # volumes:
+    #   - ./app:/app
+    working_dir: /app
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    # Optimasi untuk Raspberry Pi
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+    command: >
+      sh -c "echo 'Waiting for database...' &&
+             until python -c 'import psycopg2; psycopg2.connect(\"postgresql://ergoquipt:password@db:5432/ergoquipt\")' 2>/dev/null; do
+               sleep 5
+             done &&
+             echo 'Database ready! Starting application...' &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   db:
     image: postgres:13-alpine
@@ -47,21 +44,6 @@ services:
       timeout: 10s
       retries: 10
     restart: unless-stopped
-    # Optimasi PostgreSQL untuk Raspberry Pi
-    command: >
-      postgres
-      -c shared_buffers=128MB
-      -c effective_cache_size=512MB
-      -c maintenance_work_mem=32MB
-      -c checkpoint_completion_target=0.7
-      -c wal_buffers=4MB
-      -c default_statistics_target=100
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
 
 volumes:
   postgres_data:

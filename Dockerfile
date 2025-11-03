@@ -1,18 +1,29 @@
-FROM python:3.11
+FROM python:3.11-slim-bullseye
 
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    python3-dev \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first
 COPY requirements.txt .
 
-# Install dependencies
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy ALL application code (including app folder)
 COPY . .
 
 # Create necessary directories
 RUN mkdir -p alembic/versions
+
+# Set Python path
+ENV PYTHONPATH=/app
 
 # Expose port
 EXPOSE 8000
