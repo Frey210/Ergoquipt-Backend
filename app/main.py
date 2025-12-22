@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.v1.api import api_router
+from app.api.v2.api import api_router as api_router_v2
 from app.database.database import engine, Base, SessionLocal
 from app.database.models import User, UserRole, UserStatus
 from app.core.auth import get_password_hash
@@ -33,6 +34,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router_v2, prefix="/api/v2")
 
 def create_default_admin():
     """Create default admin user"""

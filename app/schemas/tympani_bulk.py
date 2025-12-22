@@ -1,0 +1,54 @@
+from pydantic import BaseModel, validator
+from typing import List, Optional
+from datetime import datetime
+import uuid
+
+class RespondentSnapshot(BaseModel):
+    local_id: Optional[int] = None
+    name: str
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    height: Optional[int] = None
+    weight: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+class TympaniBulkReadingCreate(BaseModel):
+    value: float
+    recorded_at: datetime
+
+class TympaniBulkCreate(BaseModel):
+    respondent: RespondentSnapshot
+    time_start: datetime
+    time_end: datetime
+    readings: List[TympaniBulkReadingCreate]
+
+class TympaniBulkCreateResponse(BaseModel):
+    recording_id: str
+    label: str
+    count: int
+
+class TympaniBulkListItem(BaseModel):
+    id: str
+    label: str
+    respondent: RespondentSnapshot
+    time_start: datetime
+    time_end: datetime
+    count: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+    @validator("id", pre=True)
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
+
+class TympaniBulkListResponse(BaseModel):
+    items: List[TympaniBulkListItem]
+    total: int
+
+class TympaniBulkDownloadRequest(BaseModel):
+    recording_ids: List[str]
+    format: str

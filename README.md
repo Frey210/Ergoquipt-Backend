@@ -292,6 +292,16 @@ POST   /sessions/{id}/events/vitals
 GET    /sessions/{id}/export.csv
 ```
 
+### 🧪 Tympani Bulk (v2)
+```http
+POST   /api/v2/tympani/recordings
+GET    /api/v2/tympani/recordings
+GET    /api/v2/tympani/recordings/{recording_id}/download?format=csv|json
+POST   /api/v2/tympani/recordings/download
+DELETE /api/v2/tympani/recordings/{recording_id}
+DELETE /api/v2/tympani/recordings?confirm=true
+```
+
 ---
 
 ## 🔒 Security Architecture
