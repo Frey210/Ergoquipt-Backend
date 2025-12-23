@@ -213,3 +213,33 @@ class TympaniBulkReading(Base):
     recording_id = Column(UUID(as_uuid=True), ForeignKey("tympani_bulk_recordings.id"), nullable=False)
     value = Column(DECIMAL(5, 2), nullable=False)
     recorded_at = Column(DateTime(timezone=True), nullable=False)
+
+class HrvBulkRecording(Base):
+    __tablename__ = "hrv_bulk_recordings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    operator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    respondent_local_id = Column(Integer)
+    respondent_name = Column(String(255), nullable=False)
+    respondent_age = Column(Integer)
+    respondent_gender = Column(String(10))
+    respondent_height = Column(Integer)
+    respondent_weight = Column(Integer)
+    respondent_created_at = Column(DateTime(timezone=True))
+
+    label = Column(String(255), nullable=False)
+    time_start = Column(DateTime(timezone=True), nullable=False)
+    time_end = Column(DateTime(timezone=True), nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class HrvBulkReading(Base):
+    __tablename__ = "hrv_bulk_readings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    recording_id = Column(UUID(as_uuid=True), ForeignKey("hrv_bulk_recordings.id"), nullable=False)
+    heart_rate = Column(Integer)
+    rr_interval = Column(DECIMAL(6, 2))
+    spo2 = Column(DECIMAL(5, 2))
+    recorded_at = Column(DateTime(timezone=True), nullable=False)

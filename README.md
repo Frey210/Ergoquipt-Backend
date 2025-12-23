@@ -302,6 +302,16 @@ DELETE /api/v2/tympani/recordings/{recording_id}
 DELETE /api/v2/tympani/recordings?confirm=true
 ```
 
+### ❤️ HRV Bulk (v2)
+```http
+POST   /api/v2/hrv/recordings
+GET    /api/v2/hrv/recordings
+GET    /api/v2/hrv/recordings/{recording_id}/download?format=csv|json
+POST   /api/v2/hrv/recordings/download
+DELETE /api/v2/hrv/recordings/{recording_id}
+DELETE /api/v2/hrv/recordings?confirm=true
+```
+
 ---
 
 ## 🔒 Security Architecture
