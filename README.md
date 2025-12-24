@@ -3,6 +3,16 @@
 Ergoquipt adalah sistem terintegrasi untuk **praktikum laboratorium ergonomi dan fisiologi** yang mengukur **reaksi waktu, suhu tubuh (tympanic), dan data vital (HR/HRV/SpO₂)**. Sistem ini menghubungkan **perangkat ESP32**, **backend FastAPI**, serta **aplikasi mobile dan web dashboard** untuk otomatisasi eksperimen.
 
 ---
+## Overview
+
+- Autentikasi JWT dengan kontrol peran (super admin, admin, operator) dan akses platform (mobile/web).
+- Manajemen operator/admin: registrasi, status aktif/nonaktif, reset password, dan penghapusan data terkait.
+- Manajemen responden, sesi, dan data reaction time, tympani, serta data vital.
+- Bulk recording tympani/HRV untuk mobile (create/list/download/delete) + admin monitoring, summary, dan export.
+- API siap diintegrasikan ke dashboard web dan aplikasi mobile.
+
+---
+
 
 ## 🏗️ System Architecture
 
@@ -311,6 +321,20 @@ POST   /api/v2/hrv/recordings/download
 DELETE /api/v2/hrv/recordings/{recording_id}
 DELETE /api/v2/hrv/recordings?confirm=true
 ```
+### ?? Admin Monitoring (v2)
+```http
+GET    /api/v2/admin/tympani/recordings
+GET    /api/v2/admin/tympani/recordings/{recording_id}/download?format=csv|json
+POST   /api/v2/admin/tympani/recordings/download
+GET    /api/v2/admin/hrv/recordings
+GET    /api/v2/admin/hrv/recordings/{recording_id}/download?format=csv|json
+POST   /api/v2/admin/hrv/recordings/download
+GET    /api/v2/admin/summary/operators?from=...&to=...
+GET    /api/v2/admin/summary/timeseries?from=...&to=...&group_by=day|week|month
+GET    /api/v2/admin/summary/global?from=...&to=...
+GET    /api/v2/admin/summary/export.csv?from=...&to=...&group_by=day|week|month
+```
+
 
 ---
 

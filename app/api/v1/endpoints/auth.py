@@ -5,7 +5,7 @@ from app.database.database import get_db
 from app.core.auth import authenticate_user, create_access_token, get_password_hash, verify_password, get_current_user
 from app.schemas.auth import LoginRequest, Token, ChangePasswordRequest
 from app.schemas.users import UserResponse
-from app.database.models import User
+from app.database.models import User, UserStatus, UserRegistrationLog
 from datetime import timedelta
 import secrets
 import string

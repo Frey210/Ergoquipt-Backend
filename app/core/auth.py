@@ -46,9 +46,14 @@ def authenticate_user(db: Session, username: str, password: str, platform: str):
     if user.role == UserRole.OPERATOR and user.status not in [UserStatus.ACTIVE, UserStatus.PENDING]:
         return None
     
-    # ✅ PERBAIKAN: Admin harus status active
-    if user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN] and user.status != UserStatus.ACTIVE:
-        return None
+    # ? PERBAIKAN: Admin boleh login jika active, atau pending saat initial password
+    if user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+        if user.status == UserStatus.ACTIVE:
+            pass
+        elif user.status == UserStatus.PENDING and user.initial_password:
+            pass
+        else:
+            return None
     
     # Cek platform access
     if user.platform_access != platform and user.platform_access != "both":
@@ -91,6 +96,14 @@ def require_admin(user: User = Depends(get_current_active_user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
+        )
+    return user
+
+def require_super_admin(user: User = Depends(get_current_active_user)):
+    if user.role != UserRole.SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super admin access required"
         )
     return user
 
