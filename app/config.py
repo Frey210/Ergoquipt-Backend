@@ -19,6 +19,8 @@ class Settings(BaseSettings):
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://0.0.0.0:8000",
+        "https://ergoquipt-admin.inkubasistartupunhas.id",
+        "https://ergoquipt.inkubasistartupunhas.id",
     ]
     
     # Platform
