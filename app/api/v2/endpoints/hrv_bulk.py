@@ -52,6 +52,7 @@ def _recording_to_csv(recording: HrvBulkRecording, readings: List[HrvBulkReading
         "recorded_at",
         "heart_rate",
         "rr_interval",
+        "hrv",
         "spo2",
     ])
     for reading in readings:
@@ -71,6 +72,7 @@ def _recording_to_csv(recording: HrvBulkRecording, readings: List[HrvBulkReading
             reading.recorded_at.isoformat(),
             reading.heart_rate if reading.heart_rate is not None else "",
             float(reading.rr_interval) if reading.rr_interval is not None else "",
+            float(reading.hrv) if reading.hrv is not None else "",
             float(reading.spo2) if reading.spo2 is not None else "",
         ])
     output.seek(0)
@@ -99,6 +101,7 @@ def _recording_to_json(recording: HrvBulkRecording, readings: List[HrvBulkReadin
             {
                 "heart_rate": reading.heart_rate,
                 "rr_interval": float(reading.rr_interval) if reading.rr_interval is not None else None,
+                "hrv": float(reading.hrv) if reading.hrv is not None else None,
                 "spo2": float(reading.spo2) if reading.spo2 is not None else None,
                 "recorded_at": reading.recorded_at.isoformat(),
             }
@@ -150,6 +153,7 @@ async def create_hrv_recording(
             recording_id=recording.id,
             heart_rate=reading.heart_rate,
             rr_interval=reading.rr_interval,
+            hrv=reading.hrv,
             spo2=reading.spo2,
             recorded_at=reading.recorded_at,
         )

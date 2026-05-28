@@ -241,5 +241,6 @@ class HrvBulkReading(Base):
     recording_id = Column(UUID(as_uuid=True), ForeignKey("hrv_bulk_recordings.id"), nullable=False)
     heart_rate = Column(Integer)
     rr_interval = Column(DECIMAL(6, 2))
+    hrv = Column(DECIMAL(6, 2))
     spo2 = Column(DECIMAL(5, 2))
     recorded_at = Column(DateTime(timezone=True), nullable=False)

@@ -15,6 +15,7 @@ class RespondentSnapshot(BaseModel):
 class HrvBulkReadingCreate(BaseModel):
     heart_rate: Optional[int] = None
     rr_interval: Optional[float] = None
+    hrv: Optional[float] = None
     spo2: Optional[float] = None
     recorded_at: datetime
 
