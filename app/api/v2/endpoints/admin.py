@@ -26,6 +26,16 @@ from app.schemas.hrv_bulk import HrvBulkDownloadRequest
 
 router = APIRouter()
 
+HRV_METRICS = {
+    "hr": ("heart_rate", "heart_rate"),
+    "heart_rate": ("heart_rate", "heart_rate"),
+    "rr": ("rr_interval", "rr_interval"),
+    "rr_interval": ("rr_interval", "rr_interval"),
+    "spo2": ("spo2", "spo2"),
+    "hrv": ("hrv", "hrv"),
+}
+DEFAULT_HRV_METRICS = ["heart_rate", "rr_interval", "spo2", "hrv"]
+
 def _build_label(name: str, time_start: datetime, time_end: datetime) -> str:
     return f"{name}_{time_start.isoformat()}-{time_end.isoformat()}"
 
@@ -34,6 +44,40 @@ def _sanitize_filename(label: str, extension: str) -> str:
     if not safe:
         safe = "recording"
     return f"{safe}.{extension}"
+
+def _parse_hrv_metrics(metrics: Optional[List[str]]) -> List[str]:
+    if not metrics:
+        return DEFAULT_HRV_METRICS
+
+    selected = []
+    for metric in metrics:
+        for raw_value in metric.split(","):
+            value = raw_value.strip().lower()
+            if not value:
+                continue
+            if value in ["all", "all_metrics", "all metrics"]:
+                return DEFAULT_HRV_METRICS
+            if value not in HRV_METRICS:
+                raise HTTPException(
+                    status_code=400,
+                    detail="metrics must contain only all, hr, rr, spo2, or hrv",
+                )
+            _, column_name = HRV_METRICS[value]
+            if column_name not in selected:
+                selected.append(column_name)
+
+    if not selected:
+        raise HTTPException(status_code=400, detail="metrics must not be empty")
+
+    return selected
+
+def _hrv_metric_value(reading: HrvBulkReading, metric: str):
+    value = getattr(reading, metric)
+    if value is None:
+        return None
+    if metric == "heart_rate":
+        return value
+    return float(value)
 
 def _operator_scope(
     db: Session,
@@ -136,10 +180,11 @@ def _recording_to_json_tympani(
 def _recording_to_csv_hrv(
     recording: HrvBulkRecording,
     readings: List[HrvBulkReading],
+    metrics: List[str],
 ) -> str:
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
+    base_headers = [
         "recording_id",
         "label",
         "operator_id",
@@ -153,13 +198,10 @@ def _recording_to_csv_hrv(
         "time_start",
         "time_end",
         "recorded_at",
-        "heart_rate",
-        "rr_interval",
-        "hrv",
-        "spo2",
-    ])
+    ]
+    writer.writerow(base_headers + metrics)
     for reading in readings:
-        writer.writerow([
+        base_values = [
             str(recording.id),
             recording.label,
             str(recording.operator_id),
@@ -173,17 +215,19 @@ def _recording_to_csv_hrv(
             recording.time_start.isoformat(),
             recording.time_end.isoformat(),
             reading.recorded_at.isoformat(),
-            reading.heart_rate if reading.heart_rate is not None else "",
-            float(reading.rr_interval) if reading.rr_interval is not None else "",
-            float(reading.hrv) if reading.hrv is not None else "",
-            float(reading.spo2) if reading.spo2 is not None else "",
-        ])
+        ]
+        metric_values = [
+            _hrv_metric_value(reading, metric) if _hrv_metric_value(reading, metric) is not None else ""
+            for metric in metrics
+        ]
+        writer.writerow(base_values + metric_values)
     output.seek(0)
     return output.getvalue()
 
 def _recording_to_json_hrv(
     recording: HrvBulkRecording,
     readings: List[HrvBulkReading],
+    metrics: List[str],
 ) -> str:
     payload = {
         "recording": {
@@ -205,10 +249,7 @@ def _recording_to_json_hrv(
         },
         "readings": [
             {
-                "heart_rate": reading.heart_rate,
-                "rr_interval": float(reading.rr_interval) if reading.rr_interval is not None else None,
-                "hrv": float(reading.hrv) if reading.hrv is not None else None,
-                "spo2": float(reading.spo2) if reading.spo2 is not None else None,
+                **{metric: _hrv_metric_value(reading, metric) for metric in metrics},
                 "recorded_at": reading.recorded_at.isoformat(),
             }
             for reading in readings
@@ -464,12 +505,14 @@ async def list_hrv_recordings_admin(
 async def download_hrv_recording_admin(
     recording_id: str,
     format: str = Query("csv"),
+    metrics: Optional[List[str]] = Query(None),
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
     platform_check: User = Depends(require_web_platform),
 ):
     if format not in ["csv", "json"]:
         raise HTTPException(status_code=400, detail="format must be csv or json")
+    selected_metrics = _parse_hrv_metrics(metrics)
 
     try:
         recording_uuid = uuid.UUID(recording_id)
@@ -490,7 +533,7 @@ async def download_hrv_recording_admin(
     ).order_by(HrvBulkReading.recorded_at).all()
 
     if format == "csv":
-        payload = _recording_to_csv_hrv(recording, readings)
+        payload = _recording_to_csv_hrv(recording, readings, selected_metrics)
         filename = _sanitize_filename(recording.label, "csv")
         return StreamingResponse(
             iter([payload]),
@@ -498,7 +541,7 @@ async def download_hrv_recording_admin(
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
-    payload = _recording_to_json_hrv(recording, readings)
+    payload = _recording_to_json_hrv(recording, readings, selected_metrics)
     filename = _sanitize_filename(recording.label, "json")
     return StreamingResponse(
         iter([payload]),
@@ -516,6 +559,7 @@ async def download_hrv_recordings_bulk_admin(
     recording_ids = payload.recording_ids
     if payload.format not in ["csv", "json"]:
         raise HTTPException(status_code=400, detail="format must be csv or json")
+    selected_metrics = _parse_hrv_metrics(payload.metrics)
     if not recording_ids:
         raise HTTPException(status_code=400, detail="recording_ids must not be empty")
 
@@ -545,10 +589,10 @@ async def download_hrv_recordings_bulk_admin(
             ).order_by(HrvBulkReading.recorded_at).all()
 
             if payload.format == "csv":
-                content = _recording_to_csv_hrv(recording, readings)
+                content = _recording_to_csv_hrv(recording, readings, selected_metrics)
                 filename = _sanitize_filename(recording.label, "csv")
             else:
-                content = _recording_to_json_hrv(recording, readings)
+                content = _recording_to_json_hrv(recording, readings, selected_metrics)
                 filename = _sanitize_filename(recording.label, "json")
 
             zip_file.writestr(filename, content)

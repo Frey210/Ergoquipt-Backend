@@ -55,3 +55,4 @@ class HrvBulkListResponse(BaseModel):
 class HrvBulkDownloadRequest(BaseModel):
     recording_ids: List[str]
     format: str
+    metrics: Optional[List[str]] = None
